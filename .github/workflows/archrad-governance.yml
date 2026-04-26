@@ -1,0 +1,85 @@
+# ArchRad architecture governance for https://github.com/archradhq/archrad-demo
+#
+# Prereq: the repo should contain an ArchRad export, e.g.:
+#   - archrad-graph.json (preferred), or
+#   - .archrad/archrad.config.json + archrad/ir.json (legacy)
+#
+# GitHub → Settings → Secrets and variables → Actions (repository), add:
+#   ARCHRAD_ORG_ID   — your ArchRad organization id
+#   ARCHRAD_API_KEY  — org CI / evidence Bearer token (create in ArchRad org settings; we store only SHA-256)
+#
+# If these secrets are omitted, the job still runs `archrad validate` (OSS) but does not fetch
+# platform policies or post SOC2 evidence. Provide BOTH or NEITHER (same rule as the Action).
+
+name: ArchRad governance
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: archrad-gov-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  archrad-validate:
+    name: Validate architecture
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect ArchRad IR in repo
+        id: ir
+        run: |
+          if [ -f archrad-graph.json ]; then
+            echo "ir_path=archrad-graph.json" >> "$GITHUB_OUTPUT"
+            echo "has_export=true" >> "$GITHUB_OUTPUT"
+          elif [ -f .archrad/archrad.config.json ] && [ -f archrad/ir.json ]; then
+            echo "ir_path=archrad/ir.json" >> "$GITHUB_OUTPUT"
+            echo "has_export=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_export=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip (no export yet)
+        if: steps.ir.outputs.has_export != 'true'
+        run: |
+          echo "No archrad IR in this tree. Export from ArchRad Cloud and push, then re-run the workflow."
+          exit 0
+
+      - name: ArchRad validate (optional org policies + SOC2 evidence)
+        id: archrad
+        if: steps.ir.outputs.has_export == 'true'
+        uses: archradhq/action@v1.0.1
+        with:
+          ir: ${{ steps.ir.outputs.ir_path }}
+          fail-on: error
+          version: '0.4.0'
+          report: archrad-governance-report.html
+          api-base-url: 'https://archrad.com'
+          soc2-org-id: ${{ secrets.ARCHRAD_ORG_ID }}
+          soc2-api-key: ${{ secrets.ARCHRAD_API_KEY }}
+          policies-on-error: continue
+        env:
+          ARCHRAD_API_BASE_URL: 'https://archrad.com'
+
+      - name: Findings summary
+        if: always() && steps.ir.outputs.has_export == 'true' && (steps.archrad.outcome == 'success' || steps.archrad.outcome == 'failure')
+        run: |
+          echo "findings  : ${{ steps.archrad.outputs.findings-count }}"
+          echo "errors     : ${{ steps.archrad.outputs.error-count }}"
+          echo "warnings   : ${{ steps.archrad.outputs.warning-count }}"
+
+      - name: Upload HTML report
+        if: failure() && steps.ir.outputs.has_export == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: archrad-governance-report
+          path: archrad-governance-report.html
+          retention-days: 5
+          if-no-files-found: ignore
