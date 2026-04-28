@@ -1,81 +1,81 @@
-metadata:
-  name: RarchRAD Demo
-  projectId: bEecPuLLgfO4CgzFbC6f
-  requirementId: null
-nodes:
-  - id: api-endpoint
-    type: httpReceive
-    label: Fetch Client Details API
-    version: 1.0.0
-    position:
-      x: 184.44750430292595
-      'y': -85.38726333907061
-    config:
-      method: GET
-      request:
-        headersSchema: ClientDetailsHeaders
-        bodySchema: ClientDetailsRequest
-      response:
-        status: 200
-        bodySchema: ClientDetailsResponse
-      businessLogic: Receives requests to fetch client details from the database. Validates input and returns client information.
-      route: /clients/details
-  - id: fetch-client-details
-    type: postgres
-    label: Fetch Client Details from Database
-    version: 1.0.0
-    position:
-      x: -174
-      'y': 200
-    config:
-      query: SELECT * FROM clients WHERE id = $1
-      params:
-        clientId: $.input.query.clientId
-      businessLogic: >-
-        Fetches client details from the database based on the provided clientId. Ensures data retrieval is accurate and
-        efficient.
-      engine: postgres
-      table: fetch_client_details_from_database
-      fields:
-        - id
-        - status
-        - created_at
-      filters:
-        status: true
-        from: true
-        to: true
-        pagination: true
-      operation: read
-      primaryKey: id
-  - id: start
-    type: start
-    label: Start
-    version: 1.0.0
-    position:
-      x: -300
-      'y': 0
-    config:
-      businessLogic: >-
-        Performs Start operation as part of the workflow. Processes input data according to business rules and returns
-        the result.
-  - id: end
-    type: end
-    label: End
-    version: 1.0.0
-    position:
-      x: 360
-      'y': 200
-    config:
-      businessLogic: >-
-        Performs End operation as part of the workflow. Processes input data according to business rules and returns the
-        result.
-edges:
-  - id: edge-0
-    source: start
-    target: api-endpoint
-  - id: edge-1
-    source: api-endpoint
-    target: fetch-client-details
-  - id: edge-2
-    source: fetch-client-details
-    target: end
+{
+  "graph": {
+    "metadata": {
+      "name": "ArchRAD Demo",
+      "projectId": "bEecPuLLgfO4CgzFbC6f",
+      "requirementId": null
+    },
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "name": "Start",
+        "version": "1.0.0",
+        "position": { "x": -300, "y": 0 },
+        "config": {
+          "businessLogic": "Performs Start operation as part of the workflow. Processes input data according to business rules and returns the result."
+        }
+      },
+      {
+        "id": "api-endpoint",
+        "type": "http",
+        "name": "Fetch Client Details API",
+        "version": "1.0.0",
+        "position": { "x": 184.44750430292595, "y": -85.38726333907061 },
+        "config": {
+          "url": "/clients/details",
+          "method": "GET",
+          "request": {
+            "headersSchema": "ClientDetailsHeaders",
+            "bodySchema": "ClientDetailsRequest"
+          },
+          "response": {
+            "status": 200,
+            "bodySchema": "ClientDetailsResponse"
+          },
+          "businessLogic": "Receives requests to fetch client details from the database. Validates input and returns client information."
+        }
+      },
+      {
+        "id": "fetch-client-details",
+        "type": "postgres",
+        "name": "Fetch Client Details from Database",
+        "version": "1.0.0",
+        "position": { "x": -174, "y": 200 },
+        "config": {
+          "query": "SELECT * FROM clients WHERE id = $1",
+          "params": {
+            "clientId": "$.input.query.clientId"
+          },
+          "businessLogic": "Fetches client details from the database based on the provided clientId. Ensures data retrieval is accurate and efficient.",
+          "engine": "postgres",
+          "table": "fetch_client_details_from_database",
+          "fields": ["id", "status", "created_at"],
+          "filters": {
+            "status": true,
+            "from": true,
+            "to": true,
+            "pagination": true
+          },
+          "operation": "read",
+          "primaryKey": "id"
+        }
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "name": "End",
+        "version": "1.0.0",
+        "position": { "x": 360, "y": 200 },
+        "config": {
+          "businessLogic": "Performs End operation as part of the workflow. Processes input data according to business rules and returns the result."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "edge-0", "source": "start", "target": "api-endpoint" },
+      { "id": "edge-1", "source": "api-endpoint", "target": "fetch-client-details" },
+      { "id": "edge-2", "source": "fetch-client-details", "target": "end" }
+    ]
+  }
+}
